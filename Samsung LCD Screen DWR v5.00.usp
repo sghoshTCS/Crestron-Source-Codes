@@ -1,0 +1,1188 @@
+// ====================================================================
+//	SIMPL+ Module Information
+// ====================================================================
+//	
+//	This module is only licensed for use in the program in which it
+//	was supplied.
+//	
+//	Using this module in any program without written permisson from
+//	Avspire Ltd is a breach of copyright.
+//	
+//	(c) Avspire Ltd 2012-2014
+//	
+//	Avspire Ltd.
+//	1 Carnegie Road,
+//	Newbury,
+//	Berkshire,
+//	United Kingdom
+//	
+//	RG145DJ
+//	
+//	www.avspire.com
+//	enquiries@avspire.co.uk
+//	
+//	Programmer:	Darren Royds
+//	
+//	====================================================================
+//	v4.00	2/3-Series
+//  v5.00   3/4-Series. Removed 2-Series support. Please use v4.00 for 2-Series support.
+//	====================================================================
+
+//==================================
+//	Compiler Directives
+//==================================
+//	#ENABLE_DYNAMIC
+//	#SYMBOL_NAME ""
+//	#HINT ""
+//	#CATEGORY ""
+#CATEGORY "46" "Samsung" // Custom
+//	#DIGITAL_EXPAND 
+//	#ANALOG_SERIAL_EXPAND 
+//	#OUTPUT_SHIFT 
+//	#HELP_PDF_FILE ""
+//	#DEFAULT_NONVOLATILE
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#PRINT_TO_TRACE
+// How many 0.1s to wait after a power off/on
+#DEFINE_CONSTANT waitPowerOff			120
+#DEFINE_CONSTANT waitPowerOn			120
+#DEFINE_CONSTANT waitInput				50
+
+// Idle polling
+#DEFINE_CONSTANT waitPoll				25
+
+// cQ elements
+#DEFINE_CONSTANT qPower					01
+#DEFINE_CONSTANT qInput					02
+#DEFINE_CONSTANT qVolume				03
+#DEFINE_CONSTANT qAudioMute				04
+#DEFINE_CONSTANT qAspect				05
+#DEFINE_CONSTANT qLock					06
+#DEFINE_CONSTANT qWall					07
+#DEFINE_CONSTANT qAutoPower				08
+#DEFINE_CONSTANT qStandby				09
+#DEFINE_CONSTANT qEnergySaving			10
+#DEFINE_CONSTANT qOSD					11
+#DEFINE_CONSTANT qModel					12
+#DEFINE_CONSTANT qSerial				13
+#DEFINE_CONSTANT qFirmware				14
+#DEFINE_CONSTANT qMAX					14
+
+// Strings to send
+#DEFINE_CONSTANT cmdModel				"\x8A"
+#DEFINE_CONSTANT cmdFirmware			"\x0E"
+#DEFINE_CONSTANT cmdSerial				"\x0B"
+
+#DEFINE_CONSTANT cmdPoll 				"\x00"
+#DEFINE_CONSTANT cmd00 					"\x00"
+
+#DEFINE_CONSTANT cmdPower				"\x11"
+#DEFINE_CONSTANT cmdPower_On			"\x01\x01"
+#DEFINE_CONSTANT cmdPower_Off			"\x01\x00"
+
+#DEFINE_CONSTANT cmdInput				"\x14"
+#DEFINE_CONSTANT cmdInput_PC			"\x01\x14"
+#DEFINE_CONSTANT cmdInput_BNC			"\x01\x1E"
+#DEFINE_CONSTANT cmdInput_DVI			"\x01\x18"
+#DEFINE_CONSTANT cmdInput_AV			"\x01\x0C"
+#DEFINE_CONSTANT cmdInput_YC			"\x01\x04"
+#DEFINE_CONSTANT cmdInput_YUV			"\x01\x08"
+#DEFINE_CONSTANT cmdInput_MagicNet		"\x01\x20"
+#DEFINE_CONSTANT cmdInput_RF			"\x01\x30"
+#DEFINE_CONSTANT cmdInput_DTV			"\x01\x40"
+#DEFINE_CONSTANT cmdInput_HDMI			"\x01\x21"
+#DEFINE_CONSTANT cmdInput_HDMI2			"\x01\x23"
+#DEFINE_CONSTANT cmdInput_HDMI3			"\x01\x24"
+#DEFINE_CONSTANT cmdInput_DisplayPort	"\x01\x25"
+
+
+#DEFINE_CONSTANT cmdAspect				"\x15"
+#DEFINE_CONSTANT cmdAspect_16_9_PC		"\x01\x10"
+#DEFINE_CONSTANT cmdAspect_4_3_PC		"\x01\x18"
+#DEFINE_CONSTANT cmdAspect_Auto			"\x01\x09"
+#DEFINE_CONSTANT cmdAspect_16_9			"\x01\x01"
+#DEFINE_CONSTANT cmdAspect_Zoom			"\x01\x04"
+#DEFINE_CONSTANT cmdAspect_Zoom1		"\x01\x05"
+#DEFINE_CONSTANT cmdAspect_Zoom2		"\x01\x06"
+#DEFINE_CONSTANT cmdAspect_WideZoom		"\x01\x31"
+#DEFINE_CONSTANT cmdAspect_4_3			"\x01\x0B"
+//#DEFINE_CONSTANT cmdAspect_Fit		"\x01\x09"
+
+#DEFINE_CONSTANT cmdVolume				"\x12"
+
+#DEFINE_CONSTANT cmdAudioMute			"\x13"
+#DEFINE_CONSTANT cmdAudioMute_On		"\x01\x01"
+#DEFINE_CONSTANT cmdAudioMute_Off		"\x01\x00"
+
+#DEFINE_CONSTANT cmdLock				"\x5F"
+#DEFINE_CONSTANT cmdLock_On				"\x01\x01"
+#DEFINE_CONSTANT cmdLock_Off			"\x01\x00"
+
+#DEFINE_CONSTANT cmdAutoPower			"\x33"
+#DEFINE_CONSTANT cmdAutoPower_On		"\x01\x01"
+#DEFINE_CONSTANT cmdAutoPower_Off		"\x01\x00"
+
+#DEFINE_CONSTANT cmdStandby				"\x4A"
+#DEFINE_CONSTANT cmdStandby_On			"\x01\x01"
+#DEFINE_CONSTANT cmdStandby_Off			"\x01\x00"
+#DEFINE_CONSTANT cmdStandby_Auto		"\x01\x02"
+
+#DEFINE_CONSTANT cmdEnergySaving		"\x92"
+#DEFINE_CONSTANT cmdEnergySaving_On		"\x01\x01"
+#DEFINE_CONSTANT cmdEnergySaving_Off	"\x01\x00"
+
+#DEFINE_CONSTANT cmdOSD					"\x70"
+#DEFINE_CONSTANT cmdOSD_On				"\x01\x01"
+#DEFINE_CONSTANT cmdOSD_Off				"\x01\x00"
+
+#DEFINE_CONSTANT cmdWall				"\x89"
+
+
+#HELP_BEGIN
+
+BAUD RATE:	9600 8 N 1
+CABLE:		2,3,5
+
+Volume:		0-100
+
+*** Revision History ***
+
+v3.03		Improved video wall control
+v3.04		Added Display Port input
+			Added Zoom & Wide Zoom aspects
+v3.05		
+v3.06		Added Polling_Enable to replace While(1) in main.
+
+#HELP_END
+
+//==================================
+//	Include Libraries
+//==================================
+//	#CRESTRON_LIBRARY ""
+//	#USER_LIBRARY ""
+
+//==================================
+//	INPUTS and OUTPUTS
+//==================================
+DIGITAL_INPUT	_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				Polling_Enable,
+				_SKIP_,
+				Debug_Enable,
+				_SKIP_,
+				Power_On,
+				Power_Off,
+				Power_Tog,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				Input_PC,
+				Input_BNC,
+				Input_DVI,
+				Input_AV,
+				Input_YC,
+				Input_YUV,
+				Input_MagicNet,
+				Input_RF,
+				Input_DTV,
+				Input_HDMI,
+				Input_HDMI2,
+				Input_HDMI3,
+				Input_DisplayPort,
+				_SKIP_,
+				Aspect_16_9,
+				Aspect_4_3,
+				Aspect_Auto,
+				Aspect_Zoom,
+				Aspect_Zoom1,
+				Aspect_Zoom2,
+				Aspect_WideZoom,
+				_SKIP_,
+				Volume_Up,
+				Volume_Down,
+				_SKIP_,
+				AudioMute_On,
+				AudioMute_Off,
+				AudioMute_Tog,
+				_SKIP_,
+				Lock_On,
+				Lock_Off,
+				_SKIP_,
+				Wall_On,
+				Wall_Off,
+				_SKIP_,
+				OSD_On,
+				OSD_Off,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_;
+ANALOG_INPUT	Wall_H,
+				Wall_V,
+				Wall_Number,
+                _SKIP_,
+				Volume,
+				_SKIP_,
+				_SKIP_;
+BUFFER_INPUT	Rx[65534];
+
+DIGITAL_OUTPUT	_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				Power_On_FB,
+				Power_Off_FB,
+				Power_Warm_FB,
+				Power_Cool_FB,
+				_SKIP_,      
+				Power_On_Btn,
+				Power_Off_Btn,
+				_SKIP_,
+				Input_PC_FB,
+				Input_BNC_FB,
+				Input_DVI_FB,
+				Input_AV_FB,
+				Input_YC_FB,
+				Input_YUV_FB,
+				Input_MagicNet_FB,
+				Input_RF_FB,
+				Input_DTV_FB,
+				Input_HDMI_FB,
+				Input_HDMI2_FB,
+				Input_HDMI3_FB,
+				Input_DisplayPort_FB,
+				_SKIP_,
+				Aspect_16_9_FB,
+				Aspect_4_3_FB,
+				Aspect_Auto_FB,
+				Aspect_Zoom_FB,
+				Aspect_Zoom1_FB,
+				Aspect_Zoom2_FB,
+				Aspect_WideZoom_FB,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				AudioMute_On_FB,
+				AudioMute_Off_FB,
+				_SKIP_,
+				_SKIP_,
+				Lock_On_FB,
+				Lock_Off_FB,
+				_SKIP_,
+				Wall_On_FB,
+				Wall_Off_FB,
+				_SKIP_,
+				OSD_On_FB,
+				OSD_Off_FB,
+				_SKIP_,
+				Comms_Error,
+				Comms_Rx;
+ANALOG_OUTPUT	_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				_SKIP_,
+				Volume_Discrete,
+				Volume_Scaled,
+				_SKIP_;
+STRING_OUTPUT	Tx,
+				_SKIP_,
+				Model,
+				Firmware,
+				Serial,
+				_SKIP_,
+				Debug;
+
+//==================================
+//	SOCKETS
+//==================================
+//	TCP_CLIENT
+//	TCP_SERVER
+//	UDP_SOCKET
+
+//==================================
+//	Parameters
+//==================================
+INTEGER_PARAMETER pID;
+INTEGER_PARAMETER pAutoPower;
+INTEGER_PARAMETER pHoldTime;
+INTEGER_PARAMETER pVolumeStep;
+INTEGER_PARAMETER pPolling;
+INTEGER_PARAMETER pDisableEco;
+//	SIGNED_INTEGER_PARAMETER
+//	LONG_INTEGER_PARAMETER
+//	SIGNED_LONG_INTEGER_PARAMETER
+//	STRING_PARAMETER
+
+//==================================
+//	Parameter Properties
+//==================================
+
+#BEGIN_PARAMETER_PROPERTIES pID
+   propValidUnits=unitDecimal;
+   propDefaultValue=01d;
+//   propList={254d,"ID All"},
+   propList={255d,"ID 00 - Don't Use!"},
+			{01d,"ID 01"}, {02d,"ID 02"}, {03d,"ID 03"}, {04d,"ID 04"}, {05d,"ID 05"}, 
+			{06d,"ID 06"}, {07d,"ID 07"}, {08d,"ID 08"}, {09d,"ID 09"}, {10d,"ID 10"},
+			{11d,"ID 11"}, {12d,"ID 12"}, {13d,"ID 13"}, {14d,"ID 14"}, {15d,"ID 15"},
+			{16d,"ID 16"}, {17d,"ID 17"}, {18d,"ID 18"}, {19d,"ID 19"}, {20d,"ID 20"},
+			{21d,"ID 21"}, {22d,"ID 22"}, {23d,"ID 23"}, {24d,"ID 24"}, {25d,"ID 25"},
+			{26d,"ID 26"}, {27d,"ID 27"}, {28d,"ID 28"}, {29d,"ID 29"}, {30d,"ID 30"},
+			{31d,"ID 31"}, {32d,"ID 32"}, {33d,"ID 33"}, {34d,"ID 34"}, {35d,"ID 35"},
+			{36d,"ID 36"}, {37d,"ID 37"}, {38d,"ID 38"}, {39d,"ID 39"}, {40d,"ID 40"},
+			{41d,"ID 41"}, {42d,"ID 42"}, {43d,"ID 43"}, {44d,"ID 44"}, {45d,"ID 45"},
+			{46d,"ID 46"}, {47d,"ID 47"}, {48d,"ID 48"}, {49d,"ID 49"}, {50d,"ID 50"},
+			{51d,"ID 51"}, {52d,"ID 52"}, {53d,"ID 53"}, {54d,"ID 54"}, {55d,"ID 55"},
+			{56d,"ID 56"}, {57d,"ID 57"}, {58d,"ID 58"}, {59d,"ID 59"}, {60d,"ID 60"},
+			{61d,"ID 61"}, {62d,"ID 62"}, {63d,"ID 63"}, {64d,"ID 64"}, {65d,"ID 65"},
+			{66d,"ID 66"}, {67d,"ID 67"}, {68d,"ID 68"}, {69d,"ID 69"}, {70d,"ID 70"},
+			{71d,"ID 71"}, {72d,"ID 72"}, {73d,"ID 73"}, {74d,"ID 74"}, {75d,"ID 75"},
+			{76d,"ID 76"}, {77d,"ID 77"}, {78d,"ID 78"}, {79d,"ID 79"}, {80d,"ID 80"},
+			{81d,"ID 81"}, {82d,"ID 82"}, {83d,"ID 83"}, {84d,"ID 84"}, {85d,"ID 85"},
+			{86d,"ID 86"}, {87d,"ID 87"}, {88d,"ID 88"}, {89d,"ID 89"}, {90d,"ID 90"},
+			{91d,"ID 91"}, {92d,"ID 92"}, {93d,"ID 93"}, {94d,"ID 94"}, {95d,"ID 95"},
+			{96d,"ID 96"}, {97d,"ID 97"}, {98d,"ID 98"}, {99d,"ID 99"}, {254d,"ID ALL"};
+   propShortDescription = "ID Set in display";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES pAutoPower
+	propValidUnits=unitDecimal;
+	propDefaultValue=1d;
+	propList ={0d,"Disabled"},{1d,"Enabled"};
+	propShortDescription="Auto power on when input is changed";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES pHoldTime
+	propValidUnits=unitTime;
+	propDefaultValue=0.2s;
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES pVolumeStep
+	propValidUnits=unitDecimal;
+	propDefaultValue=1d;
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES pPolling
+	propValidUnits=unitDecimal;
+	propDefaultValue=1d;
+	propList ={0d,"Disabled"},{1d,"Enabled"};
+	propShortDescription="Used to disable polling mechanism";
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES pDisableEco
+	propValidUnits=unitDecimal;
+	propDefaultValue=1d;
+	propList ={0d,"Disabled"},{1d,"Enabled"};
+	propShortDescription="Used to disable all power saving on display";
+#END_PARAMETER_PROPERTIES
+
+/*
+#BEGIN_PARAMETER_PROPERTIES parameter_variable, parameter_variable, ...
+   // propValidUnits = // unitString or unitDecimal|unitHex|unitPercent|unitCharacter|unitTime|unitTicks;
+   // propDefaultUnit = // unitString, unitDecimal, unitHex, unitPercent, unitCharacter, unitTime or unitTicks;
+   // propBounds = lower_bound , upper_bound;
+   // propDefaultValue = ;  // or, propDefaultValue = "";
+   // propList = // { "value" , "label" } , { "value" , "label" } , ... ;
+   // propShortDescription = "status_bar_hint_text";
+   // #BEGIN_PROP_FULL_DESCRIPTION  line_1...  line_2...  line_n  #END_PROP_FULL_DESCRIPTION
+   // #BEGIN_PROP_NOTES line_1...  line_2...  line_n  #END_PROP_NOTES
+#END_PARAMETER_PROPERTIES
+*/
+
+//==================================
+//	Structure Definitions
+//==================================
+
+//==================================
+//	Global Variables
+//==================================
+Integer		nPollCount;			//	
+Integer		nRxing;				//	
+Integer		nWorking;			//	
+Integer		nPowerFB;			//	
+Integer		nInputFB;			//	
+Integer		nMuteFB;			//	
+Integer		nVolumeFB;			//	
+Integer		nAspectFB;			//	
+Integer		nLockFB;			//	
+Integer		nOSDFB;				//	
+Integer		nWallFB;			//	
+Integer		nPollVersion;		//
+String		cCmdQ[qMAX][10];	//	
+String		cRx[3];				//	
+String		cInput[2];			//	
+Integer		nPolling;			//	
+
+//==================================
+//	Functions
+//================================== 
+
+//--------------------------------------
+// Comms Time Out
+Function fnTimeOut(Integer nCmd){
+	If(nCmd){
+		Wait(2000,waitTimeOut){
+			Comms_Error=1;
+			nPollVersion=1;
+		}
+	}
+	Else{
+		CancelWait(waitTimeOut);
+		Comms_Error=0;
+	}
+}
+
+//--------------------------------------
+// Process strings to send
+Function fnSendString(String cCmd, String cData){
+	Integer nSum;
+	Integer nCount;
+	
+	nSum= ( Byte(cCmd,1) + pID );
+	
+	For( nCount=1 To Len(cData) ){
+		nSum=( nSum + Byte(cData,nCount) );
+	}
+	
+	MakeString(Tx,"\xAA%s%s%s%s", cCmd, Chr(pID), cData, Chr(nSum));
+	fnTimeOut(1);
+}
+
+//--------------------------------------
+// Generate strings
+Function fnPower(String cCmd){
+	cCmdQ[qPower]=cCmd;
+}
+
+Function fnInput(String cCmd){
+	If(pPolling){
+		If(Power_On_FB){
+			cCmdQ[qInput]=cCmd;
+			cInput="";
+		}
+		Else{
+			cInput=cCmd;
+			fnPower(cmdPower_On);
+		}
+	}
+	Else{
+		cCmdQ[qInput]=cCmd;
+		cInput="";
+	}
+}
+
+Function fnAspect(String cCmd){
+	cCmdQ[qAspect]=cCmd;
+}
+
+Function fnAudioMute(String cCmd){
+	cCmdQ[qAudioMute]=cCmd;
+}
+
+Function fnLock(String cCmd){
+	cCmdQ[qLock]=cCmd;
+}
+
+Function fnOSD(String cCmd){
+	cCmdQ[qOSD]=cCmd;
+}
+
+Function fnWall(Integer nCmd){
+	Integer nPos;
+	
+	Switch(Wall_H)
+	{
+		Case(1):{nPos=0x10;}
+		Case(2):{nPos=0x20;}
+		Case(3):{nPos=0x30;}
+		Case(4):{nPos=0x40;}
+		Case(5):{nPos=0x50;}
+	}
+	nPos= nPos + Wall_V;
+
+	If(nCmd){
+		MakeString(cCmdQ[qWall],"\x02%c%c",nPos,Wall_Number);
+		
+	}
+	Else{
+		MakeString(cCmdQ[qWall],"\x02\x00\x00");
+	}
+}
+
+Function fnVolume(Integer nCmd){
+	If(nCmd>32768)		{nCmd=0;}
+	Else If(nCmd>100)	{nCmd=100;}
+	
+	cCmdQ[qVolume]=Chr(nCmd);
+}
+
+//--------------------------------------
+// Feedback
+Function fnPowerFB(Integer nCmd){
+	If(!nWorking){
+		If(nCmd<>nPowerFB){
+			Power_Off_FB=0;
+			Power_Warm_FB=0;
+			Power_On_FB=0;
+			Power_Cool_FB=0;
+			
+			nPowerFB=nCmd;
+			
+			Switch(nCmd){
+				Case(0):{
+					Power_Off_FB=1;
+					Power_On_Btn=0;
+					Power_Off_Btn=1;
+				}
+				Case(1):{
+					Power_On_FB=1;
+					Power_Off_Btn=0;
+					Power_On_Btn=1;
+					If(Len(cInput)){fnInput(cInput);}
+				}
+				Case(2):{
+					Power_Warm_FB=1;
+					Power_Off_Btn=0;
+					Power_On_Btn=1;
+				}
+				Case(3):{
+					Power_Cool_FB=1;
+					Power_On_Btn=0;
+					Power_Off_Btn=1;
+				}
+			}
+		}
+	}
+}
+
+Function fnInputFB(Integer nCmd){ 
+	If(nCmd<>nInputFB){
+		Input_PC_FB=0;
+		Input_BNC_FB=0;
+		Input_DVI_FB=0;
+		Input_AV_FB=0;
+		Input_YC_FB=0;
+		Input_YUV_FB=0;
+		Input_MagicNet_FB=0;
+		Input_RF_FB=0;
+		Input_DTV_FB=0;
+		Input_HDMI_FB=0;
+		Input_HDMI2_FB=0;
+		Input_HDMI3_FB=0;
+		Input_DisplayPort_FB=0;
+		
+		nInputFB=nCmd;
+		
+		Switch(nCmd){
+			Case(20):{Input_PC_FB=1;}
+			Case(30):{Input_BNC_FB=1;}
+			Case(24):{Input_DVI_FB=1;}
+			Case(12):{Input_AV_FB=1;}
+			Case(04):{Input_YC_FB=1;}
+			Case(08):{Input_YUV_FB=1;}
+			Case(32):{Input_MagicNet_FB=1;}
+			Case(48):{Input_RF_FB=1;}
+			Case(63):{Input_DTV_FB=1;}
+			Case(33):{Input_HDMI_FB=1;}
+			Case(34):{Input_HDMI_FB=1;}
+			Case(35):{Input_HDMI2_FB=1;}
+			//Case(36):{Input_HDMI2_FB=1;}
+			Case(36):{Input_HDMI3_FB=1;}
+			Case(37):{Input_DisplayPort_FB=1;}
+		}
+	}
+}
+
+Function fnAspectFB(Integer nCmd){  
+	If(nCmd<>nAspectFB){
+		Aspect_16_9_FB=0;
+		Aspect_4_3_FB=0;
+		Aspect_Auto_FB=0;
+		Aspect_Zoom_FB=0;
+		Aspect_Zoom1_FB=0;
+		Aspect_Zoom2_FB=0;
+		Aspect_WideZoom_FB=0;
+		
+		nAspectFB=nCmd;
+		
+		Switch(nCmd){
+			Case(16):{Aspect_16_9_FB=1;}
+			Case(24):{Aspect_4_3_FB=1;}
+			Case(01):{Aspect_16_9_FB=1;}
+			Case(11):{Aspect_4_3_FB=1;}
+			//Case(00):{Aspect_Auto_FB=1;}
+			Case(09):{Aspect_Auto_FB=1;}
+			Case(04):{Aspect_Zoom_FB=1;}
+			Case(05):{Aspect_Zoom1_FB=1;}
+			Case(06):{Aspect_Zoom2_FB=1;}
+			Case(49):{Aspect_WideZoom_FB=1;}
+		}
+	}
+}
+
+Function fnAudioMuteFB(Integer nCmd){
+	If(nCmd<>nMuteFB){
+		AudioMute_Off_FB=0;
+		AudioMute_On_FB=0;
+		
+		nMuteFB=nCmd;
+		
+		If(nCmd)	{AudioMute_On_FB=1;}
+		Else		{AudioMute_Off_FB=1;}
+	}
+}
+
+Function fnLockFB(Integer nCmd){
+	If(nCmd<>nLockFB){
+		Lock_Off_FB=0;
+		Lock_On_FB=0;
+		
+		nLockFB=nCmd;
+		
+		If(nCmd)	{Lock_On_FB=1;}
+		Else		{Lock_Off_FB=1;}
+	}
+}
+
+Function fnOSDFB(Integer nCmd){
+	If(nCmd<>nOSDFB){
+		OSD_Off_FB=0;
+		OSD_On_FB=0;
+		
+		nOSDFB=nCmd;
+		
+		If(nCmd)	{OSD_On_FB=1;}
+		Else		{OSD_Off_FB=1;}
+	}
+}
+
+Function fnWallFB(Integer nCmd){
+	If(nCmd<>nWallFB){
+		Wall_Off_FB=0;
+		Wall_On_FB=0;
+		
+		nWallFB=nCmd;
+		
+		If(nCmd)	{Wall_On_FB=1;}
+		Else		{Wall_Off_FB=1;}
+	}
+}
+
+Function fnVolumeFB(Integer nCmd){
+	If(nCmd<>Volume_Discrete){
+		Volume_Discrete=nCmd;
+		Volume_Scaled=(nCmd*(65536/100));
+	}
+}
+
+Function fnProcessQ(){
+	String cString[2];
+	
+	//--------------------------------------
+	// Power
+	If( Len(cCmdQ[qPower]) ){
+		
+		// Power On
+		If(cCmdQ[qPower]=cmdPower_On){
+			If(!Power_On_FB){
+				fnPowerFB(2);
+				nWorking=waitPowerOn;
+				fnSendString(cmdPower,cCmdQ[qPower]);
+				cCmdQ[qPower]="";
+				nPollCount=0;
+			}
+			Else If(!pPolling){
+				fnPowerFB(2);
+				nWorking=waitPowerOn;
+				fnSendString(cmdPower,cCmdQ[qPower]);
+				cCmdQ[qPower]="";
+				nPollCount=0;
+			}
+			Else{
+				cCmdQ[qPower]="";
+			}
+		}
+		
+		// Power Off
+		Else{
+			If(!Power_Off_FB){
+				fnPowerFB(3);
+				nWorking=waitPowerOff;
+				fnSendString(cmdPower,cCmdQ[qPower]);
+				SetArray(cCmdQ,"");
+				nPollCount=0;
+			}
+			Else If(!pPolling){
+				fnPowerFB(3);
+				nWorking=waitPowerOff;
+				fnSendString(cmdPower,cCmdQ[qPower]);
+				SetArray(cCmdQ,"");
+				nPollCount=0;
+			}
+			Else{
+				cCmdQ[qPower]="";
+			}
+		}
+		
+	}
+	//--------------------------------------
+	// Input
+	Else If( Len(cCmdQ[qInput]) ){
+		nWorking=waitInput;
+		fnSendString(cmdInput,cCmdQ[qInput]);
+		If(Debug_Enable){MakeString(Debug,"Input\n");}
+		cCmdQ[qInput]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Volume
+	Else If( Len(cCmdQ[qVolume]) ){
+		MakeString(cString,"\x01%s",cCmdQ[qVolume]);
+		fnSendString(cmdVolume,cString);
+		cCmdQ[qVolume]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Audio Mute
+	Else If( Len(cCmdQ[qAudioMute]) ){
+		fnSendString(cmdAudioMute,cCmdQ[qAudioMute]);
+		cCmdQ[qAudioMute]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Aspect
+	Else If( Len(cCmdQ[qAspect]) ){
+		fnSendString(cmdAspect,cCmdQ[qAspect]);
+		cCmdQ[qAspect]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Lock
+	Else If( Len(cCmdQ[qLock]) ){
+		fnSendString(cmdLock,cCmdQ[qLock]);
+		cCmdQ[qLock]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Wall
+	Else If( Len(cCmdQ[qWall]) ){
+		fnSendString(cmdWall,cCmdQ[qWall]);
+		cCmdQ[qWall]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Auto Power
+	Else If( Len(cCmdQ[qAutoPower]) ){
+		fnSendString(cmdAutoPower,cCmdQ[qAutoPower]);
+		cCmdQ[qAutoPower]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Standby Control
+	Else If( Len(cCmdQ[qStandby]) ){
+		fnSendString(cmdStandby,cCmdQ[qStandby]);
+		cCmdQ[qStandby]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Energy Saving
+	Else If( Len(cCmdQ[qEnergySaving]) ){
+		fnSendString(cmdEnergySaving,cCmdQ[qEnergySaving]);
+		cCmdQ[qEnergySaving]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// OSD
+	Else If( Len(cCmdQ[qOSD]) ){
+		fnSendString(cmdOSD,cCmdQ[qOSD]);
+		cCmdQ[qOSD]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Model
+	Else If( Len(cCmdQ[qModel]) ){
+		fnSendString(cmdModel,cmdPoll);
+		cCmdQ[qModel]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Serial
+	Else If( Len(cCmdQ[qSerial]) ){
+		fnSendString(cmdSerial,cmdPoll);
+		cCmdQ[qSerial]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Firmware
+	Else If( Len(cCmdQ[qFirmware]) ){
+		fnSendString(cmdFirmware,cmdPoll);
+		cCmdQ[qFirmware]="";
+		nPollCount=0;
+	}
+	//--------------------------------------
+	// Idle Polling
+	Else If(pPolling){
+		If(Debug_Enable){MakeString(Debug,"Poll-1\n");}
+		//	How many 0.1's to wait before polling...
+		If(nPollCount>=waitPoll){
+			If(Debug_Enable){MakeString(Debug,"Poll-2\n");}
+			
+			If(pDisableEco && nPollVersion){
+				cCmdQ[qAutoPower]=cmdAutoPower_Off;
+				cCmdQ[qStandby]=cmdStandby_Off;
+				cCmdQ[qEnergySaving]=cmdEnergySaving_Off;
+			}
+			
+			If(nPollVersion){
+				nPollVersion=0;
+				cCmdQ[qModel]=cmdPoll;
+				cCmdQ[qSerial]=cmdPoll;
+				cCmdQ[qFirmware]=cmdPoll;
+				fnSendString(cmdPoll,cmdPoll);
+			}
+			Else{
+				fnSendString(cmdPoll,cmdPoll);
+			}
+			
+			nPollCount=0;
+		}
+		Else{
+			nPollCount=nPollCount+1;
+		}
+	}
+}
+
+Function fnProcessMessage(String s){
+	String cJunk[65534];
+	Integer nCount;
+	
+	// Process message
+	// ACK
+	If(Byte(s,5)= 65){
+		
+		Switch(Byte(s,6)){
+			// Status 0x00 (0)
+			Case(00):{
+				fnPowerFB(Byte(s,7));
+				fnVolumeFB(Byte(s,8));
+				fnAudioMuteFB(Byte(s,9));
+				fnInputFB(Byte(s,10));
+				fnAspectFB(Byte(s,11));
+			}
+			// Power 0x11 (17)
+			Case(17):{
+				fnPowerFB(Byte(s,7));
+			}
+			// Input 0x14 (20)
+			Case(20):{
+				fnInputFB(Byte(s,7));
+			}
+			// Aspect 0x15 (21)
+			Case(21):{
+				fnAspectFB(Byte(s,7));
+			}
+			// Volume 0x12 (18)
+			Case(18):{
+				fnVolumeFB(Byte(s,7));
+			}
+			// AudioMute 0x13 (19)
+			Case(19):{
+				fnAudioMuteFB(Byte(s,7));
+			}
+			// AudioMute 0x5F (95)
+			Case(95):{
+				fnLockFB(Byte(s,7));
+			}
+			// Auto Power 0x33 (51)
+			Case(51):{
+				//fnAutoPowerFB(Byte(s,7));
+			}
+			// Standby Control 0x4A (74)
+			Case(74):{
+				//fnStandbyFB(Byte(s,7));
+			}
+			// Energy Saving 0x92 (146)
+			Case(146):{
+				//fnEnergySavingFB(Byte(s,7));
+			}
+			// OSD 0x70 (112)
+			Case(112):{
+				fnOSDFB(Byte(s,7));
+			}
+			// Model 0x8A (138)
+			Case(138):{
+				Model=Mid(s,7,Len(s)-8);
+			}
+			// Firmware 0x0E (0E)
+			Case(14):{
+				cJunk=Mid(s,7,Len(s)-8);
+				For(nCount=1 To Len(cJunk)){
+					If(Byte(cJunk,nCount)=0x00){
+						Firmware=Left(cJunk,nCount-1);
+						Break;
+					}
+				}
+			}
+			// Serial 0x0E (0B)
+			Case(11):{
+				cJunk=Mid(s,7,Len(s)-8);
+				For(nCount=1 To Len(cJunk)){
+					If(Byte(cJunk,nCount)=0x00){
+						Serial=Left(cJunk,nCount-1);
+						Break;
+					}
+				}
+			}
+			
+		}
+	}
+	
+	// NACK
+	Else If(Byte(s,5)= 78){
+		If(Debug_Enable){MakeString(Debug,"!!!NACK Recieved\n");}
+		
+		Switch(Byte(s,6)){
+			// Status 0x00 (0)
+			Case(00):{
+				
+			}
+			// Power 0x11 (17)
+			Case(17):{
+				
+			}
+			// Input 0x14 (20)
+			Case(20):{
+				
+			}
+			// Aspect 0x15 (21)
+			Case(21):{
+				
+			}
+			// Volume 0x12 (18)
+			Case(18):{
+				
+			}
+			// AudioMute 0x13 (19)
+			Case(19):{
+				
+			}
+			// AudioMute 0x5F (95)
+			Case(95):{
+				
+			}
+			// Auto Power 0x33 (51)
+			Case(51):{
+				
+			}
+			// Standby Control 0x4A (74)
+			Case(74):{
+				
+			}
+			// Energy Saving 0x92 (146)
+			Case(146):{
+				
+			}
+			// OSD 0x70 (112)
+			Case(112):{
+				
+			}
+			// Model 0x8A (138)
+			Case(138):{
+				Model="Not Available";
+			}
+			// Firmware 0x0E (0E)
+			Case(14):{
+				Firmware="Not Available";
+			}
+			// Serial 0x0E (0B)
+			Case(11):{
+				Serial="Not Available";
+			}
+			
+		}
+	}
+}
+
+//==================================
+//	Event Handlers
+//==================================
+
+Push Polling_Enable{
+	nPolling=1;
+}
+
+Release Polling_Enable{
+	nPolling=0;
+}
+
+Push Power_On			{fnPower(cmdPower_On);}
+Push Power_Off			{fnPower(cmdPower_Off);}
+Push Power_Tog			{
+	If(Power_Off_FB || Power_Cool_FB){
+		fnPower(cmdPower_On);
+	}
+	Else{
+		fnPower(cmdPower_Off);
+	}
+}
+
+Push Input_PC			{fnInput(cmdInput_PC);}
+Push Input_BNC			{fnInput(cmdInput_BNC);}
+Push Input_DVI			{fnInput(cmdInput_DVI);}
+Push Input_AV			{fnInput(cmdInput_AV);}
+Push Input_YC			{fnInput(cmdInput_YC);}
+Push Input_YUV			{fnInput(cmdInput_YUV);}
+Push Input_MagicNet		{fnInput(cmdInput_MagicNet);}
+Push Input_RF			{fnInput(cmdInput_RF);}
+Push Input_DTV			{fnInput(cmdInput_DTV);}
+Push Input_HDMI			{fnInput(cmdInput_HDMI);}
+Push Input_HDMI2		{fnInput(cmdInput_HDMI2);}
+Push Input_HDMI3		{fnInput(cmdInput_HDMI3);}
+Push Input_DisplayPort	{fnInput(cmdInput_DisplayPort);}
+
+Push Aspect_16_9		{
+	If( Input_PC_FB || Input_BNC_FB || Input_DVI_FB ){
+		fnAspect(cmdAspect_16_9_PC);
+	}
+	Else{
+		fnAspect(cmdAspect_16_9);
+	}
+}
+
+Push Aspect_4_3			{
+	If( Input_PC_FB || Input_BNC_FB || Input_DVI_FB ){
+		fnAspect(cmdAspect_4_3_PC);
+	}
+	Else{
+		fnAspect(cmdAspect_4_3);
+	}
+}
+Push Aspect_Auto		{fnAspect(cmdAspect_Auto);}
+Push Aspect_Zoom 		{fnAspect(cmdAspect_Zoom);}
+Push Aspect_Zoom1 		{fnAspect(cmdAspect_Zoom1);}
+Push Aspect_Zoom2		{fnAspect(cmdAspect_Zoom2);}
+Push Aspect_WideZoom 	{fnAspect(cmdAspect_WideZoom);}
+
+Push Volume_Up{
+	While(Volume_Up){
+		fnVolume(Volume_Discrete+pVolumeStep);
+		Delay(pHoldTime);
+	}
+}
+Push Volume_Down{
+	While(Volume_Down){
+		fnVolume(Volume_Discrete-pVolumeStep);
+		Delay(pHoldTime);
+	}
+}
+
+Push AudioMute_On		{fnAudioMute(cmdAudioMute_On);}
+Push AudioMute_Off		{fnAudioMute(cmdAudioMute_Off);}
+Push AudioMute_Tog		{
+	If(AudioMute_On_FB){
+		fnAudioMute(cmdAudioMute_Off);
+	}
+	Else{
+		fnAudioMute(cmdAudioMute_On);
+	}
+}
+
+Push Lock_On		{fnLock(cmdLock_On);}
+Push Lock_Off		{fnLock(cmdLock_Off);}
+
+Push OSD_On			{fnOSD(cmdOSD_On);}
+Push OSD_Off		{fnOSD(cmdOSD_Off);}
+
+Push Wall_On		{fnWall(1);}
+Push Wall_Off		{fnWall(0);}
+
+Change Volume			{fnVolume(Volume);}
+
+THREADSAFE Change Rx{
+	String cMessage[1024];
+	String cJunk[65534];
+	
+	While( Find(cRx,Rx) ){
+		
+		// Is there stuff before our first message?
+		If(Find(cRx,Rx)>1){
+			// Remove it
+			cJunk=Left(Rx,Find(cRx,Rx)-1);
+			cJunk=Remove(cJunk,Rx);
+		}	
+		
+		// Do we have a full message
+		If( Len(Rx)>=4 && (Len(Rx)>=(Byte(Rx,4)+5)) ){
+			
+			// Reset Timeout
+			fnTimeOut(0);
+			Pulse(1,Comms_Rx);
+			
+			// Remove message
+			cMessage=Left(Rx,(Byte(Rx,4)+5) );
+			cJunk=Remove(cMessage,Rx);
+			
+			fnProcessMessage(cMessage);
+		}
+		ProcessLogic();
+	}
+}
+
+
+
+//==================================
+//	Main()
+//==================================
+
+Function Main(){
+
+	If(pPolling){
+		nPolling=1;
+	}
+	Else{
+		nPolling=0;
+	}
+	WaitForInitializationComplete();
+	
+	nPowerFB=255;
+	nInputFB=255;
+	nMuteFB=255;
+	nVolumeFB=255;
+	nAspectFB=255;
+	nLockFB=255;
+	nOSDFB=255;
+	Power_Off_FB=1;
+	Power_Off_Btn=1;
+	nPollVersion=1;
+	nRxing=0;
+	
+	MakeString( cRx,"\xAA\xFF%s",Chr(pID) );
+	
+	While(1){
+		If(nWorking){
+			nWorking=nWorking-1;
+		}
+		Else{
+			If(nPolling){
+				fnProcessQ();
+			}
+		}
+		Delay(10);
+	}
+}

@@ -1,0 +1,132 @@
+#CATEGORY "0" // Hidden
+
+/*
+Dealer Name: Crestron
+System Name:
+System Number: V1
+Programmer: 
+Comments:
+*/
+//Compiler Directives
+//#HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#PRINT_TO_TRACE
+
+//INCLUDES
+
+#USER_SIMPLSHARP_LIBRARY "CliSimplSharpLib"
+
+/*******************************************************************************************
+  DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+  (Uncomment and declare inputs and outputs as needed)
+*******************************************************************************************/
+DIGITAL_INPUT 	_SKIP_,_SKIP_,
+				_SKIP_, 
+				Debug,
+				Debug_Persitant,
+				_SKIP_;
+ANALOG_INPUT	Debug_In;
+DIGITAL_OUTPUT 	_SKIP_,_SKIP_,
+				Initialised,
+				Debug_Fb, 
+				Connected[10,1];
+ANALOG_OUTPUT  	_SKIP_,
+				Debug_Lvl_FB,
+				_SKIP_;
+STRING_OUTPUT  	Utelogy_Client_Version, 
+				Utelogy_Client_IP[10,1];
+
+INTEGER_PARAMETER Debug_Level;
+/*******************************************************************************************
+  Parameters
+  (Uncomment and declare parameters as needed)
+*******************************************************************************************/
+					
+   	#BEGIN_PARAMETER_PROPERTIES Debug_Level
+   	#END_PARAMETER_PROPERTIES
+
+/*******************************************************************************************
+  Global Variables
+  (Uncomment and declare global variables as needed)
+  Note:  Be sure to initialize all declared STRING variables as needed
+         For example, in Function Main: myString = "";
+*******************************************************************************************/
+CliMain myCli;
+CliComms myComms;
+/*******************************************************************************************
+  Event Handlers
+  (Uncomment and declare additional event handlers as needed)
+*******************************************************************************************/
+
+EventHandler ConnectedEvent (CliMain sender, ConnectionStatusArgs e)
+{
+    Connected[e.ID] = e.Connected;
+    if (e.Connected)
+      Utelogy_Client_IP[e.ID] = e.IpAddress;
+    else
+	  Utelogy_Client_IP[e.ID] = "";
+}
+
+Callback Function cbf_DebugLevel(SIGNED_INTEGER DebugLvl)		
+{
+ 	Debug_Lvl_FB = DebugLvl;
+}
+
+Callback Function cbf_DebugFb(SIGNED_INTEGER DebugFb)		
+{
+ 	Debug_FB = DebugFb;
+}
+
+PUSH Debug
+{
+    Debug_Fb = myCli.DebugOn();
+}
+
+RELEASE Debug
+{
+    Debug_Fb = myCli.DebugOff();
+}
+
+CHANGE Debug_Persitant
+{
+  if (Initialised = 1)
+    myCli.DebugPersitant(Debug_Persitant);
+}
+    
+CHANGE Debug_In
+{
+   if (Debug_Fb < 4)
+   {
+     myCli.DebugLevel(Debug_In);
+	 Debug_FB = Debug_In;
+   }
+}
+/*******************************************************************************************
+  Main()
+  Uncomment and place one-time startup code here
+  (This code will get called when the system starts up)
+*******************************************************************************************/
+Function Main()
+{
+  	// Start the network server 
+	myCli.Start();
+    if (myCli.initialised <= 1)
+      Initialised = myCli.initialised;
+
+	WaitForInitializationComplete();  
+	//RegisterCoreEvents and Delegates
+	RegisterEvent(myCli, onConnectedEvent, ConnectedEvent); 
+	RegisterDelegate(CliMain, delDebugLvl, cbf_DebugLevel);
+	RegisterDelegate(CliMain, delDebugFb, cbf_DebugFb);
+
+	myCli.DebugLevel(Debug_Level); 
+	wait(500)
+    {
+	  PRINT("Checking the Utelogy Connection....");
+	  myCli.CheckConnection();
+    }
+
+}
+
